@@ -2,24 +2,48 @@ version: '3'
 
 services:
   nginx-proxy:
-    restart: always
     image: jwilder/nginx-proxy
-    environment:
-      - ENABLE_IPV6=true
-    volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ./volumes/nginx/certs:/etc/nginx/certs:ro
-      - ./volumes/nginx/vhost.d:/etc/nginx/vhost.d
-      - ./volumes/nginx/conf.d:/etc/nginx/conf.d
-      - ./volumes/nginx/share:/usr/share/nginx/html
-      - ./volumes/nginx/htpasswd:/etc/nginx/htpasswd
+    container_name: nginx-proxy
     ports:
       - "80:80"
       - "443:443"
-    networks:
-      - proxy
+    environment:
+      - ENABLE_IPV6=true
+      - DHPARAM_BITS=4096
+      - DEFAULT_HOST=default.local
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - certs:/etc/nginx/certs:ro
+      - dhparam:/etc/nginx/dhparam
+      - vhost:/etc/nginx/vhost.d
+      - conf:/etc/nginx/conf.d
+      - share:/usr/share/nginx/html
+    restart: always
+
+  nginx-proxy-letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: nginx-proxy-letsencrypt
+    depends_on:
+      - nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - dhparam:/etc/nginx/dhparam:ro
+      - vhost:/etc/nginx/vhost.d
+      - share:/usr/share/nginx/html
+    environment:
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+    restart: always
+
+volumes:
+  conf:
+  certs:
+  dhparam:
+  vhost:
+  share:
+  htpasswd:
 
 networks:
-  proxy:
+  default:
     external:
-      name: proxy
+      name: nginx-proxy
